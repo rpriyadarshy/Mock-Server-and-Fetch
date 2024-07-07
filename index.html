@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+
+    // #Question-01
+
+    const express = require('express');
+const bodyParser = require('body-parser');
+const app = express();
+const port = 3000;
+
+app.use(bodyParser.json());
+
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  // Replace with your actual database interaction
+  const users = [
+    { id: 1, username: 'john_doe', password: 'password123' },
+    { id: 2, username: 'jane_smith', password: 'mypassword' },
+  ];
+
+  const user = users.find((u) => u.username === username && u.password === password);
+
+  if (user) {
+    // Authentication successful
+    res.json({ message: 'Login successful!' });
+  } else {
+    // Authentication failed
+    res.status(401).json({ message: 'Invalid credentials. Please try again.' });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});
+
+
+    // #Question-02
+
+    //main.js
+const base_url = "https://json-with-auth.onrender.com";
+let userAuthToken;
+let userId;
+
+// login.js
+const loginForm = document.getElementById("loginForm");
+const welcomeMessage = document.getElementById("welcomeMessage");
+const todosContainer = document.getElementById("todosContainer");
+
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const username = loginForm.username.value;
+  const password = loginForm.password.value;
+  try {
+    const response = await fetch(`${base_url}/user/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ username, password }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      userAuthToken = data.token;
+      userId = data.userId;
+      localStorage.setItem("localAccessToken", userAuthToken);
+      localStorage.setItem("userId", userId);
+      welcomeMessage.textContent = `Hey ${username}, welcome back!`;
+      welcomeMessage.style.display = "block";
+      loginForm.style.display = "none";
+      fetchTodos();
+    } else {
+      // Handle login errors
+      console.error("Login failed");
+    }
+  } catch (error) {
+    console.error("Error during login:", error);
+  }
+});
+
+// fetch todos.js
+async function fetchTodos() {
+  try {
+    const response = await fetch(
+      `${base_url}/todos?userId=${userId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${userAuthToken}`,
+        },
+      }
+    );
+
+    if (response.ok) {
+      const todos = await response.json();
+      displayTodos(todos);
+    } else {
+      // Handle fetching todos errors
+      console.error("Error fetching todos");
+    }
+  } catch (error) {
+    console.error("Error during fetch:", error);
+  }
+}
+
+// display todos.js
+function displayTodos(todos) {
+  todosContainer.innerHTML = "";
+  todos.forEach((todo) => {
+    const todoItem = document.createElement("div");
+    todoItem.classList.add("todo-item");
+    todoItem.innerHTML = `
+      <input type="checkbox" id="todo-${todo.id}" ${
+      todo.completed ? "checked" : ""
+    } data-todo-id="${todo.id}">
+      <label for="todo-${todo.id}">${todo.title}</label>
+    `;
+
+    const checkbox = todoItem.querySelector("input[type='checkbox']");
+    checkbox.addEventListener("change", async () => {
+      const isCompleted = checkbox.checked;
+      try {
+        const response = await fetch(`${base_url}/todos/${todo.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userAuthToken}`,
+          },
+          body: JSON.stringify({ completed: isCompleted }),
+        });
+        if (!response.ok) {
+          // Handle update errors
+          console.error("Error updating todo");
+        }
+      } catch (error) {
+        console.error("Error during update:", error);
+      }
+    });
+
+    todosContainer.appendChild(todoItem);
+  });
+}
+
+// Initialization on page load
+if (localStorage.getItem("localAccessToken")) {
+  userAuthToken = localStorage.getItem("localAccessToken");
+  userId = localStorage.getItem("userId");
+  welcomeMessage.textContent = `Hey ${userId}, welcome back!`;
+  welcomeMessage.style.display = "block";
+  loginForm.style.display = "none";
+  fetchTodos();
+}
+
+
+
+
+    // #Question-03
+
+
+        // 1. API Key Retrieval:
+const API_KEY = "YOUR_OMDB_API_KEY"; // Replace with your actual API key
+
+// 2. Search Functionality:
+const searchForm = document.querySelector("#search-form");
+const searchInput = document.querySelector("#search-input");
+const resultsContainer = document.querySelector("#results-container");
+
+searchForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const searchTerm = searchInput.value;
+  fetchMovieData(searchTerm);
+});
+
+// 3. Pagination:
+let currentPage = 1;
+const resultsPerPage = 10;
+const paginationControls = document.querySelector("#pagination-controls");
+
+function fetchMovieData(searchTerm) {
+  const apiUrl = `https://www.omdbapi.com/?apikey=${API_KEY}&s=${searchTerm}&page=${currentPage}`;
+  fetch(apiUrl)
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      return response.json();
+    })
+    .then((data) => {
+      displayResults(data);
+      updatePagination();
+    })
+    .catch((error) => {
+      console.error("Fetch error:", error);
+      displayError("An error occurred while fetching data.");
+    });
+}
+
+function displayResults(data) {
+  resultsContainer.innerHTML = "";
+
+  if (data.Response === "False") {
+    displayError(data.Error);
+    return;
+  }
+
+  const movies = data.Search;
+  if (movies.length === 0) {
+    displayError("No results found.");
+    return;
+  }
+
+  movies.forEach((movie) => {
+    const movieElement = document.createElement("div");
+    movieElement.classList.add("movie");
+    movieElement.innerHTML = `
+      <h3>${movie.Title}</h3>
+      <p>Year: ${movie.Year}</p>
+      <img src="${movie.Poster}" alt="${movie.Title} Poster">
+    `;
+    resultsContainer.appendChild(movieElement);
+  });
+}
+
+function updatePagination() {
+  paginationControls.innerHTML = "";
+
+  if (currentPage > 1) {
+    const prevButton = document.createElement("button");
+    prevButton.textContent = "Previous";
+    prevButton.addEventListener("click", () => {
+      currentPage--;
+      fetchMovieData(searchInput.value);
+    });
+    paginationControls.appendChild(prevButton);
+  }
+
+  if (currentPage < Math.ceil(data.totalResults / resultsPerPage)) {
+    const nextButton = document.createElement("button");
+    nextButton.textContent = "Next";
+    nextButton.addEventListener("click", () => {
+      currentPage++;
+      fetchMovieData(searchInput.value);
+    });
+    paginationControls.appendChild(nextButton);
+  }
+}
+
+function displayError(message) {
+  const errorElement = document.createElement("div");
+  errorElement.classList.add("error");
+  errorElement.textContent = message;
+  resultsContainer.appendChild(errorElement);
+}
+
+
+
+        // #Question-04
+
+
+// Server-side (using JSON-server)
+const express = require('express');
+const cors = require('cors');
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const auctions = require('./auctions.json'); // Sample auction data
+
+// API endpoints
+app.get('/auctions', (req, res) => {
+  res.json(auctions);
+});
+
+app.post('/auctions', (req, res) => {
+  const newAuction = req.body;
+  auctions.push(newAuction);
+  res.json(newAuction);
+});
+
+app.post('/auctions/:id/bids', (req, res) => {
+  const auctionId = req.params.id;
+  const newBid = req.body;
+  // Find the auction and update bids
+  // ...
+  res.json(newBid);
+});
+
+// ... other endpoints
+
+app.listen(3000, () => {
+  console.log('Server listening on port 3000');
+});
+
+// Client-side (using JavaScript)
+const socket = new WebSocket('ws://localhost:3000');
+
+// Handle real-time updates
+socket.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  // Update UI based on data
+};
+
+// Example: Bidding on an auction
+function placeBid(auctionId, bidAmount) {
+  const data = {
+    auctionId,
+    bidAmount,
+    userId: // User ID from authentication
+  };
+  socket.send(JSON.stringify(data));
+}
+
+// ... other client-side logic
+
+</script>
+</html>
